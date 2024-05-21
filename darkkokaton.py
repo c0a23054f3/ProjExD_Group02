@@ -71,6 +71,7 @@ class Bird(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = xy
         self.speed = 10
+        self.state = "normal"
         self.hyper_life = 0
 
 
@@ -104,6 +105,14 @@ class Bird(pg.sprite.Sprite):
         if not (sum_mv[0] == 0 and sum_mv[1] == 0):
             self.dire = tuple(sum_mv)
             self.image = self.imgs[self.dire]
+
+        if self.state == "hyper":
+            self.image = pg.transform.laplacian(self.image)
+            self.hyper_life -= 1
+            if self.hyper_life < 0:
+                self.state = "normal"
+
+
         screen.blit(self.image, self.rect)
 
 
@@ -238,7 +247,7 @@ class Score:
     def __init__(self):
         self.font = pg.font.Font(None, 50)
         self.color = (0, 0, 255)
-        self.value = 1000
+        self.value = 0
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         self.rect = self.image.get_rect()
         self.rect.center = 100, HEIGHT-50
@@ -310,15 +319,6 @@ def main():
         for bomb in pg.sprite.groupcollide(bombs, shield, True, False).keys():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.value += 1  # 1点アップ
-
-
-        for gravity in gravity_fields:
-            for bomb in pg.sprite.spritecollide(gravity,bombs,True):
-                exps.add(Explosion(bomb,50))
-                score.value += 1
-            for emy in pg.sprite.spritecollide(gravity,emys,True):
-                exps.add(Explosion(emy,100))
-                score.value += 10
 
         for bomb in pg.sprite.spritecollide(bird, bombs, True):
             if bird.state == "hyper":

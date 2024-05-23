@@ -137,7 +137,7 @@ class Bomb(pg.sprite.Sprite):
         self.image.set_colorkey((0, 0, 0))
         self.rect = self.image.get_rect()
         # 爆弾を投下するemyから見た攻撃対象のbirdの方向を計算
-        self.vx, self.vy = calc_orientation(emy.rect, bird.rect)  
+        self.vx, self.vy = calc_orientation(emy.rect, bird.rect) 
         self.rect.centerx = emy.rect.centerx
         self.rect.centery = emy.rect.centery+emy.rect.height/2
         self.speed = 6
@@ -257,6 +257,16 @@ class Score:
         screen.blit(self.image, self.rect)
 
 
+"""class Back_music:
+    def __init__(self):
+        pg.mixer.init()
+        pg.mixer.music.load(f"fig/全てを創造する者「Dominus_Deus」.mp3")
+    def music_play(self):
+        pg.mixer.music.play(loops = 1)
+        time.sleep(3)"""
+
+
+
 
 
 
@@ -268,7 +278,11 @@ def main():
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"fig/pg_bg.jpg")
     bg_img2 = bg_img
+    bg_img3 = pg.image.load(f"fig/temple-3d1.jpg")
+    bg_img4 = bg_img3
     score = Score()
+   
+    #Back_music(f"fig/全てを創造する者「Dominus_Deus」.mp3")
 
     bird = Bird(3, (900, 400))
     bombs = pg.sprite.Group()
@@ -278,7 +292,6 @@ def main():
     gravity_fields = pg.sprite.Group()
 
     shield = pg.sprite.Group()
-
     tmr = 0
     clock = pg.time.Clock()
     while True:
@@ -290,17 +303,31 @@ def main():
                 beams.add(Beam(bird))
 
         x = tmr%4800
-        screen.blit(bg_img, [-x, 0])
-        screen.blit(bg_img2,[-x+1600, 0])
-        screen.blit(bg_img, [-x+3200, 0])
-        screen.blit(bg_img, [-x+4800, 0])
-        tmr += 10
-        clock.tick(200)
-
-
-
-        if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
-            emys.add(Enemy())
+        if score.value <= 50:  # スコアが50以下の時、
+            pg.mixer.music.load(f"fig/全てを創造する者「Dominus_Deus」.mp3")  # BGMの音源をロード
+            pg.mixer.music.play(-1)  # BGMを再生（無限ループ）
+            pg.mixer.music.pause()  # このBGMはボスステージに流すので、ここでは一時停止
+            screen.blit(bg_img, [-x, 0])  # 開幕背景
+            screen.blit(bg_img2,[-x+1600, 0])
+            screen.blit(bg_img, [-x+3200, 0])
+            screen.blit(bg_img, [-x+4800, 0])
+            tmr += 10
+            clock.tick(200)
+            if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
+                emys.add(Enemy())
+        else:  # スコアが50より大きいとき、ボスステージ
+            pg.mixer.music.unpause()  # BGMの一時停止を解除
+            screen.blit(bg_img3, [-x, 0])  # ボス戦背景
+            screen.blit(bg_img4,[-x+1600, 0])
+            screen.blit(bg_img3, [-x+3200, 0])
+            screen.blit(bg_img3, [-x+4800, 0])
+            clock.tick(100)
+            tmr += 10
+            clock.tick(200)
+            
+            
+        #if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
+            #emys.add(Enemy())
 
         for emy in emys:
             if emy.state == "stop" and tmr%emy.interval == 0:
@@ -314,7 +341,6 @@ def main():
 
         for bomb in pg.sprite.groupcollide(bombs, beams, True, True).keys():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
-            score.value += 1  # 1点アップ
         
         for bomb in pg.sprite.groupcollide(bombs, shield, True, False).keys():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
@@ -330,6 +356,7 @@ def main():
                 pg.display.update()
                 time.sleep(2)
                 return
+
         
         for event in pg.event.get():
             if (event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT) and score.value >= 100:
@@ -346,7 +373,7 @@ def main():
             pg.display.update()
             time.sleep(2)
             return
-
+        
         bird.update(key_lst, screen)
         beams.update()
         beams.draw(screen)
@@ -364,6 +391,7 @@ def main():
         pg.display.update()
         tmr += 1
         clock.tick(50)
+    
 
 
 if __name__ == "__main__":
@@ -371,3 +399,4 @@ if __name__ == "__main__":
     main()
     pg.quit()
     sys.exit()
+

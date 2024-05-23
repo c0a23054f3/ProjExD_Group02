@@ -121,7 +121,7 @@ class Bomb(pg.sprite.Sprite):
     """
     爆弾に関するクラス
     """
-    colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255)]
+    colors = [(255, 0, 0),(0,255,0),(0,0,255),(255,255,0),(255,0,255),(0,255,255)]
 
     def __init__(self, emy: "Enemy", bird: Bird):
         """
@@ -151,6 +151,22 @@ class Bomb(pg.sprite.Sprite):
         if check_bound(self.rect) != (True, True):
             self.kill()
 
+
+
+
+class HomingBomb(Bomb):
+    """
+    ホーミング爆弾
+    """
+    def __init__(self, emy: "Enemy", bird: Bird):
+        super().__init__(emy, bird)
+        self.target = bird
+
+    def update(self):
+        self.vx, self.vy = calc_orientation(self.rect, self.target.rect)
+        self.rect.move_ip(self.speed * self.vx, self.speed * self.vy) #プレーヤーの方向を再計算
+        if check_bound(self.rect) != (True, True):
+            self.kill()
 
 class Beam(pg.sprite.Sprite):
     """
@@ -225,6 +241,7 @@ class Enemy(pg.sprite.Sprite):
         self.bound = random.randint(50, HEIGHT/2)  # 停止位置
         self.state = "down"  # 降下状態or停止状態
         self.interval = random.randint(50, 300)  # 爆弾投下インターバル
+        self.attack_pattern = random.choice(['straight','homing']) #ランダムに攻撃のパターンを決定
 
     def update(self):
         """
@@ -236,6 +253,15 @@ class Enemy(pg.sprite.Sprite):
             self.vy = 0
             self.state = "stop"
         self.rect.centery += self.vy
+
+    def drop_bomb(self,bird:Bird):
+        """
+        ボムの動きを決定する
+        """
+        if self.attack_pattern == 'straight':
+            return Bomb(self,bird) #straightの場合は通常攻撃
+        elif self.attack_pattern == 'homing':
+            return HomingBomb(self, bird) #homingの場合はホーミング攻撃
 
 
 class Score:
@@ -257,7 +283,67 @@ class Score:
         screen.blit(self.image, self.rect)
 
 
+class Boss(pg.sprite.Sprite):
+    """
+    ボスを描画するクラス
+    """
+    def __init__(self):
+        super().__init__()
+        img10 = pg.transform.rotozoom(pg.image.load("fig/10.png"),0,15.0)
+        self.image = img10
+        self.rect = self.image.get_rect()
+        self.rect.center = (1400,450)
+        self.attack_interval = 100 #攻撃の間隔
+        self.last_attack_time = 0
+        self.change_pattern_interval = 750  # パターン変更の間隔
+        self.last_pattern_change_time = 0
+        self.attack_pattern = 'straight'
 
+    def update(self,screen: pg.Surface):
+        screen.blit(self.image,self.rect)
+
+    def attack(self,bird: Bird, tmr: int, bombs: pg.sprite.Group):
+        """
+        時間によってボスの攻撃を変更
+        """
+        if tmr - self.last_attack_time > self.attack_interval:
+            if self.attack_pattern == 'straight':
+                bombs.add(Bomb(self, bird))  # 通常
+            elif self.attack_pattern == 'spread':
+                for angle in range(0, 360, 45):  # 広範囲
+                    radian_angle = math.radians(angle)
+                    bombs.add(SpreadBomb(self, bird, radian_angle))
+            elif self.attack_pattern == 'homing':
+                bombs.add(HomingBomb(self, bird))  # ホーミング
+            self.last_attack_time = tmr
+    
+    def change_attack_pattern(self, tmr: int):
+        """
+        ランダムにボスの攻撃を決定する
+        """
+        if tmr - self.last_pattern_change_time > self.change_pattern_interval:
+            patterns = ['straight', 'spread', 'homing']
+            self.attack_pattern = random.choice(patterns)
+            self.last_pattern_change_time = tmr
+
+
+class SpreadBomb(Bomb):
+    """
+    ボス専用攻撃
+    広範囲拡散弾
+    """
+    def __init__(self, emy: "Boss", bird:Bird, angle:float):
+        super().__init__(emy, bird)
+        self.vx = math.cos(angle)
+        self.vy = math.sin(angle)
+        self.rect.centerx = emy.rect.centerx
+        self.rect.centery = emy.rect.centery
+        self.speed = 6
+
+    def update(self):
+        self.rect.move_ip(self.speed * self.vx, self.speed * self.vy)
+        if check_bound(self.rect) != (True, True):
+            self.kill()
 
 
 
@@ -275,8 +361,8 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
+    boss = Boss()
     gravity_fields = pg.sprite.Group()
-
     shield = pg.sprite.Group()
 
     tmr = 0
@@ -290,12 +376,25 @@ def main():
                 beams.add(Beam(bird))
 
         x = tmr%4800
-        screen.blit(bg_img, [-x, 0])
-        screen.blit(bg_img2,[-x+1600, 0])
-        screen.blit(bg_img, [-x+3200, 0])
-        screen.blit(bg_img, [-x+4800, 0])
-        tmr += 10
-        clock.tick(200)
+        if score.value <= 50:
+            screen.blit(bg_img, [-x, 0])
+            screen.blit(bg_img2,[-x+1600, 0])
+            screen.blit(bg_img, [-x+3200, 0])
+            screen.blit(bg_img, [-x+4800, 0])
+            tmr += 10
+            clock.tick(200)
+        else:
+            screen.blit(bg_img,[-x,0])
+            screen.blit(bg_img2,[-x+1600,0])
+            screen.blit(bg_img,[-x+3200,0])
+            screen.blit(bg_img,[-x+4800,0])
+            tmr += 10
+            clock.tick(200)
+            boss.update(screen)
+            boss.attack(bird,tmr,bombs) #ボスの攻撃
+            boss.change_attack_pattern(tmr) #ボスの攻撃のパターンを変更
+            for beam in pg.sprite.spritecollide(boss,beams,True):
+                exps.add(Explosion(beam,50))
 
 
 
@@ -305,7 +404,7 @@ def main():
         for emy in emys:
             if emy.state == "stop" and tmr%emy.interval == 0:
                 # 敵機が停止状態に入ったら，intervalに応じて爆弾投下
-                bombs.add(Bomb(emy, bird))
+                bombs.add(emy.drop_bomb(bird))
 
         for emy in pg.sprite.groupcollide(emys, beams, True, True).keys():
             exps.add(Explosion(emy, 100))  # 爆発エフェクト

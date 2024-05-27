@@ -382,7 +382,7 @@ def main():
             elif beam_mode == 1:
                 Bmode = Mode(beam_mode)
                 if ct_charge >= 150:
-                    condition_c = Condition(1)
+                    condition_c = Condition(beam_mode)
                     if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                         beams_c.add(Beam1(bird))
                         ct_charge = 0
@@ -390,7 +390,7 @@ def main():
 
 
         if beam_mode == 1:
-            if beam_mode < 150:
+            if beam_mode <= 160:
                 ct_charge += 1
 
         x = tmr%4800

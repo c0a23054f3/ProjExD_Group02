@@ -116,7 +116,6 @@ class Bird(pg.sprite.Sprite):
         screen.blit(self.image, self.rect)
 
 
-
 class Bomb(pg.sprite.Sprite):
     """
     爆弾に関するクラス
@@ -152,7 +151,7 @@ class Bomb(pg.sprite.Sprite):
             self.kill()
 
 
-class Beam(pg.sprite.Sprite):
+class Beam0(pg.sprite.Sprite):
     """
     ビームに関するクラス
     """
@@ -179,6 +178,36 @@ class Beam(pg.sprite.Sprite):
         """
         self.rect.move_ip(self.speed*self.vx, self.speed*self.vy)
         if check_bound(self.rect) != (True, True):
+            self.kill()
+
+
+class Beam1(pg.sprite.Sprite):
+    """
+    チャージビームSurfaceを生成する
+    """
+    def __init__(self, bird: Bird):
+        """
+        チャージビーム画像Surfaceを生成する
+        引数はbeam0クラスの初期化メソッドと同様
+        """
+        super().__init__()
+        self.vx, self.vy = (+1, 0)
+        angle = math.degrees(math.atan2(-self.vy, self.vx))
+        self.image = pg.transform.rotozoom(pg.image.load(f"fig/charge_shot.png"), angle, 0.5)
+        self.vx = math.cos(math.radians(angle))
+        self.vy = -math.sin(math.radians(angle))
+        self.rect = self.image.get_rect()
+        self.rect.centery = bird.rect.centery+bird.rect.height*self.vy
+        self.rect.centerx = bird.rect.centerx+bird.rect.width*self.vx
+        self.speed = 5
+
+    def update(self):
+        """
+        ビームを速度ベクトルself.vx, self.vyに基づき移動させる
+        引数 screen：画面Surface
+        """
+        self.rect.move_ip(self.speed*self.vx, self.speed*self.vy)
+        if self.rect.centerx > WIDTH + 100:
             self.kill()
 
 
@@ -220,22 +249,22 @@ class Enemy(pg.sprite.Sprite):
         super().__init__()
         self.image = random.choice(__class__.imgs)
         self.rect = self.image.get_rect()
-        self.rect.center = random.randint(0, WIDTH), 0
-        self.vy = +6
-        self.bound = random.randint(50, HEIGHT/2)  # 停止位置
+        self.rect.center = WIDTH, random.randint(0, HEIGHT)
+        self.vx = -13
+        self.bound = random.randint(250, WIDTH-100)  # 停止位置
         self.state = "down"  # 降下状態or停止状態
         self.interval = random.randint(50, 300)  # 爆弾投下インターバル
 
     def update(self):
         """
-        敵機を速度ベクトルself.vyに基づき移動（降下）させる
+        敵機を速度ベクトルself.vxに基づき移動（左方向）させる
         ランダムに決めた停止位置_boundまで降下したら，_stateを停止状態に変更する
         引数 screen：画面Surface
         """
-        if self.rect.centery > self.bound:
-            self.vy = 0
+        if self.rect.centerx < self.bound:
+            self.vx = 0
             self.state = "stop"
-        self.rect.centery += self.vy
+        self.rect.centerx += self.vx
 
 
 class Score:
@@ -257,10 +286,57 @@ class Score:
         screen.blit(self.image, self.rect)
 
 
+class Mode:
+    """
+    ビームの状態を表示するクラス
+    """
+    def __init__(self, mode):
+        """
+        現在のビームの状態に応じて表示内容を変更する
+        引数 mode：ビームの状態を表す
+        """
+        self.mode = mode
+        if mode == 0:
+            self.font = pg.font.Font(None, 45)
+            self.color = (0, 0, 0)
+            self.value = 0
+            self.image = self.font.render("Beam : Normal", 0, self.color)
+            self.rect = self.image.get_rect()
+            self.rect.center = WIDTH-150, HEIGHT-30
+        elif mode == 1:
+            self.font = pg.font.Font(None, 45)
+            self.color = (0, 0, 0)
+            self.image = self.font.render("Beam : Charge", 0, self.color)
+            self.rect = self.image.get_rect()
+            self.rect.center = WIDTH-150, HEIGHT-30
+
+    def update(self, screen:pg.Surface):
+        screen.blit(self.image, self.rect)
 
 
+class Condition:
+    """
+    チャージビームのチャージ状態の表示
+    """
+    def __init__(self, mode=0):
+        self.mode = mode
+        if mode == 1:
+            self.font = pg.font.Font(None, 40)
+            self.color = (251, 224, 0)
+            self.value = 0
+            self.txt = self.font.render("Chrge OK!", 0, self.color)
+            self.rect = self.txt.get_rect()
+            self.rect.center = WIDTH-150, HEIGHT-60
 
+        else:
+            self.font = pg.font.Font(None, 45)
+            self.color = (251, 224, 0)
+            self.txt = self.font.render("Chrge OK!", 0, self.color)
+            self.rect = self.txt.get_rect()
+            self.rect.center = -100, -100
 
+    def update(self, screen:pg.Surface):
+        screen.blit(self.txt, self.rect)
 
 
 def main():
@@ -273,21 +349,47 @@ def main():
     bird = Bird(3, (900, 400))
     bombs = pg.sprite.Group()
     beams = pg.sprite.Group()
+    beams_c = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
     gravity_fields = pg.sprite.Group()
 
     shield = pg.sprite.Group()
-
+    beam_mode = 0  # ショットの種類に関する変数
     tmr = 0
+    ct_charge = 0  # チャージビームの時間計測
     clock = pg.time.Clock()
+
     while True:
         key_lst = pg.key.get_pressed()
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
-            if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
-                beams.add(Beam(bird))
+            if event.type == pg.KEYDOWN and event.key == pg.K_c:      # "c"キー押下でビームの切り替えを行う
+                beam_mode += 1
+                if beam_mode >= 2:
+                    beam_mode = 0
+
+            if beam_mode == 0:
+                Bmode = Mode(beam_mode)
+                condition_c = Condition()
+                if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
+                    beams.add(Beam0(bird))
+            elif beam_mode == 1:
+                # if event.type == pg.KEYDOWN and event.key == pg.K_v:
+                #     count += 1
+                Bmode = Mode(beam_mode)
+                if ct_charge >= 150:
+                    condition_c = Condition(1)
+                    if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
+                        beams_c.add(Beam1(bird))
+                        ct_charge = 0
+                        condition_c = Condition()
+
+
+        if beam_mode == 1:
+            if beam_mode < 150:
+                ct_charge += 1
 
         x = tmr%4800
         screen.blit(bg_img, [-x, 0])
@@ -298,7 +400,6 @@ def main():
         clock.tick(200)
 
 
-
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
             emys.add(Enemy())
 
@@ -306,7 +407,7 @@ def main():
             if emy.state == "stop" and tmr%emy.interval == 0:
                 # 敵機が停止状態に入ったら，intervalに応じて爆弾投下
                 bombs.add(Bomb(emy, bird))
-
+        
         for emy in pg.sprite.groupcollide(emys, beams, True, True).keys():
             exps.add(Explosion(emy, 100))  # 爆発エフェクト
             score.value += 10  # 10点アップ
@@ -314,6 +415,15 @@ def main():
 
         for bomb in pg.sprite.groupcollide(bombs, beams, True, True).keys():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
+            score.value += 1  # 1点アップ
+
+        # チャージビーム用の当たり判定
+        for emy in pg.sprite.groupcollide(emys, beams_c, True, False).keys():
+            exps.add(Explosion(emy, 100))  # 爆発エフェクト
+            score.value += 10  # 10点アップ
+            bird.change_img(6, screen)  # こうかとん喜びエフェクト
+
+        for bomb in pg.sprite.groupcollide(bombs, beams_c, True, False).keys():
             score.value += 1  # 1点アップ
         
         for bomb in pg.sprite.groupcollide(bombs, shield, True, False).keys():
@@ -350,6 +460,8 @@ def main():
         bird.update(key_lst, screen)
         beams.update()
         beams.draw(screen)
+        beams_c.update()
+        beams_c.draw(screen)
         emys.update()
         emys.draw(screen)
         bombs.update()
@@ -359,6 +471,8 @@ def main():
         gravity_fields.update()
         gravity_fields.draw(screen)
         score.update(screen)
+        Bmode.update(screen)
+        condition_c.update(screen)
         shield.update()
         shield.draw(screen)
         pg.display.update()

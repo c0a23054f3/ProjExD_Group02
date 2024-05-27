@@ -319,6 +319,10 @@ class Condition:
     チャージビームのチャージ状態の表示
     """
     def __init__(self, mode=0):
+        """
+        チャージビームを打つ状態のときのみチャージ状態を表示する
+        引数 mode：ビームの状態を表す
+        """
         self.mode = mode
         if mode == 1:
             self.font = pg.font.Font(None, 40)
@@ -376,8 +380,6 @@ def main():
                 if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                     beams.add(Beam0(bird))
             elif beam_mode == 1:
-                # if event.type == pg.KEYDOWN and event.key == pg.K_v:
-                #     count += 1
                 Bmode = Mode(beam_mode)
                 if ct_charge >= 150:
                     condition_c = Condition(1)

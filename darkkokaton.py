@@ -141,7 +141,6 @@ class Bomb(pg.sprite.Sprite):
             self.kill()
 
 
-
 class HomingBomb(Bomb):
     """
     ホーミング爆弾
@@ -347,7 +346,6 @@ class Condition:
             self.txt = self.font.render("Charge OK!", 0, self.color)
             self.rect = self.txt.get_rect()
             self.rect.center = WIDTH-150, HEIGHT-60
-
         else:
             self.font = pg.font.Font(None, 40)
             self.color = (255, 0, 0)
@@ -425,7 +423,7 @@ class SpreadBomb(Bomb):
 
 
 def main():
-    pg.display.set_caption("真！こうかとん無双")
+    pg.display.set_caption("ダークこうかとんを倒せ！！")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"fig/pg_bg.jpg")
     bg_img2 = bg_img
@@ -439,8 +437,6 @@ def main():
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
     boss = Boss()
-    shield = pg.sprite.Group()
-
     beam_mode = 0  # ショットの種類に関する変数
     charge_mode = 0  # チャージの状態を表す変数
     k_health = bird.health  #birdクラスの中のhealthを呼び出す
@@ -475,13 +471,10 @@ def main():
                         ct_charge = 0
                         charge_mode = 0
                         condition_c = Condition()
-
         if beam_mode == 1:
             if beam_mode <= 160:
                 ct_charge += 1
-
         x = tmr%4800         
-        
         if score.value < 50:  # スコアが50以下の時、
             pg.mixer.music.load(f"fig/全てを創造する者「Dominus_Deus」.mp3")  # BGMの音源をロード
             pg.mixer.music.play(-1)  # BGMを再生（無限ループ）
@@ -534,7 +527,6 @@ def main():
                 pg.display.update()
                 time.sleep(5)
                 return
-
         for emy in emys:
             if emy.state == "stop" and tmr%emy.interval == 0:
                 # 敵機が停止状態に入ったら，intervalに応じて爆弾投下
@@ -557,11 +549,6 @@ def main():
 
         for bomb in pg.sprite.groupcollide(bombs, beams_c, True, False).keys():
             score.value += 1  # 1点アップ
-        
-        for bomb in pg.sprite.groupcollide(bombs, shield, True, False).keys():
-            exps.add(Explosion(bomb, 50))  # 爆発エフェクト
-            score.value += 1  # 1点アップ
-
 
         #ここからHPをハートとして可視化するコード
         #healthはハートで、こうかとんが攻撃を食らうとnohealthとして枠のみのハートを呼び出す
@@ -591,8 +578,7 @@ def main():
             time.sleep(5)
             return
         for bomb in pg.sprite.spritecollide(bird, bombs, True):
-            k_health -= 1
-        
+            k_health -= 1 
 
         bird.update(key_lst, screen)
         beams.update()
@@ -612,7 +598,6 @@ def main():
         tmr += 1
         clock.tick(50)
     
-
 
 if __name__ == "__main__":
     pg.init()

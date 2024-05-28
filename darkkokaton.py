@@ -121,7 +121,7 @@ class Bomb(pg.sprite.Sprite):
         self.image.set_colorkey((0, 0, 0))
         self.rect = self.image.get_rect()
         # 爆弾を投下するemyから見た攻撃対象のbirdの方向を計算
-        self.vx, self.vy = calc_orientation(emy.rect, bird.rect)  
+        self.vx, self.vy = calc_orientation(emy.rect, bird.rect) 
         self.rect.centerx = emy.rect.centerx
         self.rect.centery = emy.rect.centery+emy.rect.height/2
         self.speed = 6
@@ -333,6 +333,8 @@ def main():
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"fig/pg_bg.jpg")
     bg_img2 = bg_img
+    bg_img3 = pg.image.load(f"fig/temple-3d1.jpg")
+    bg_img4 = bg_img3
     score = Score()
 
     bird = Bird(3, (900, 400))
@@ -343,6 +345,7 @@ def main():
     emys = pg.sprite.Group()
 
     shield = pg.sprite.Group()
+
     beam_mode = 0  # ショットの種類に関する変数
     k_health = bird.health  #birdクラスの中のhealthを呼び出す
     health_img = pg.transform.rotozoom(pg.image.load(f"fig/health.png"), 0, 0.1)
@@ -388,8 +391,27 @@ def main():
         tmr += 10
         clock.tick(200)
 
-        if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
-            emys.add(Enemy())
+        if score.value <= 50:  # スコアが50以下の時、
+            pg.mixer.music.load(f"fig/全てを創造する者「Dominus_Deus」.mp3")  # BGMの音源をロード
+            pg.mixer.music.play(-1)  # BGMを再生（無限ループ）
+            pg.mixer.music.pause()  # このBGMはボスステージに流すので、ここでは一時停止
+            screen.blit(bg_img, [-x, 0])  # 開幕背景
+            screen.blit(bg_img2,[-x+1600, 0])
+            screen.blit(bg_img, [-x+3200, 0])
+            screen.blit(bg_img, [-x+4800, 0])
+            tmr += 10
+            clock.tick(200)
+            if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
+                emys.add(Enemy())
+        else:  # スコアが50より大きいとき、ボスステージ
+            pg.mixer.music.unpause()  # BGMの一時停止を解除
+            screen.blit(bg_img3, [-x, 0])  # ボス戦背景
+            screen.blit(bg_img4,[-x+1600, 0])
+            screen.blit(bg_img3, [-x+3200, 0])
+            screen.blit(bg_img3, [-x+4800, 0])
+            clock.tick(100)
+            tmr += 10
+            clock.tick(200)
 
         for emy in emys:
             if emy.state == "stop" and tmr%emy.interval == 0:
@@ -417,6 +439,7 @@ def main():
         for bomb in pg.sprite.groupcollide(bombs, shield, True, False).keys():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.value += 1  # 1点アップ
+
 
         #ここからHPをハートとして可視化するコード
         #healthはハートで、こうかとんが攻撃を食らうとnohealthとして枠のみのハートを呼び出す
@@ -448,6 +471,7 @@ def main():
             return
         for bomb in pg.sprite.spritecollide(bird, bombs, True):
             k_health -= 1
+        
 
         bird.update(key_lst, screen)
         beams.update()
@@ -468,6 +492,7 @@ def main():
         pg.display.update()
         tmr += 1
         clock.tick(50)
+    
 
 
 if __name__ == "__main__":
@@ -475,3 +500,4 @@ if __name__ == "__main__":
     main()
     pg.quit()
     sys.exit()
+

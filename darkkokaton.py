@@ -48,11 +48,6 @@ class Bird(pg.sprite.Sprite):
     }
 
     def __init__(self, num: int, xy: tuple[int, int]):
-        """
-        こうかとん画像Surfaceを生成する
-        引数1 num：こうかとん画像ファイル名の番号
-        引数2 xy：こうかとん画像の位置座標タプル
-        """
         super().__init__()
         img0 = pg.transform.rotozoom(pg.image.load(f"fig/{num}.png"), 0, 2.0)
         img = pg.transform.flip(img0, True, False)  # デフォルトのこうかとん
@@ -71,9 +66,7 @@ class Bird(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = xy
         self.speed = 10
-        self.state = "normal"
-        self.hyper_life = 0
-
+        self.health = 2
 
 
     def change_img(self, num: int, screen: pg.Surface):
@@ -105,14 +98,6 @@ class Bird(pg.sprite.Sprite):
         if not (sum_mv[0] == 0 and sum_mv[1] == 0):
             self.dire = tuple(sum_mv)
             self.image = self.imgs[self.dire]
-
-        if self.state == "hyper":
-            self.image = pg.transform.laplacian(self.image)
-            self.hyper_life -= 1
-            if self.hyper_life < 0:
-                self.state = "normal"
-
-
         screen.blit(self.image, self.rect)
 
 
@@ -356,10 +341,12 @@ def main():
     beams_c = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
-    gravity_fields = pg.sprite.Group()
 
     shield = pg.sprite.Group()
     beam_mode = 0  # ショットの種類に関する変数
+    k_health = bird.health  #birdクラスの中のhealthを呼び出す
+    health_img = pg.transform.rotozoom(pg.image.load(f"fig/health.png"), 0, 0.1)
+    nohealth_img = pg.transform.rotozoom(pg.image.load(f"fig/nohealth.png"), 0, 0.385)
     tmr = 0
     ct_charge = 0  # チャージビームの時間計測
     clock = pg.time.Clock()
@@ -395,12 +382,11 @@ def main():
 
         x = tmr%4800
         screen.blit(bg_img, [-x, 0])
-        screen.blit(bg_img2,[-x+1600, 0])
+        screen.blit(bg_img,[-x+1600, 0])
         screen.blit(bg_img, [-x+3200, 0])
         screen.blit(bg_img, [-x+4800, 0])
         tmr += 10
         clock.tick(200)
-
 
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
             emys.add(Enemy())
@@ -432,32 +418,36 @@ def main():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.value += 1  # 1点アップ
 
-        for bomb in pg.sprite.spritecollide(bird, bombs, True):
-            if bird.state == "hyper":
-                exps.add(Explosion(bomb, 50))
-                score.value += 1
-            if bird.state == "normal":
-                bird.change_img(8, screen) # こうかとん悲しみエフェクト
-                score.update(screen)
-                pg.display.update()
-                time.sleep(2)
-                return
-        
-        for event in pg.event.get():
-            if (event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT) and score.value >= 100:
-                bird.state = "hyper"
-                bird.hyper_life = 500
-                score.value -= 100
-                bird.update(key_lst, screen)
-
-        for bomb in pg.sprite.spritecollide(bird, bombs, True):
-            if bomb.state == "inactive":
-                continue
+        #ここからHPをハートとして可視化するコード
+        #healthはハートで、こうかとんが攻撃を食らうとnohealthとして枠のみのハートを呼び出す
+        if k_health > 1:
+            screen.blit(health_img, [100, 20])
+        if 2 > k_health > -1:
+            screen.blit(nohealth_img, [100, 20])
+        if k_health > 0:
+            screen.blit(health_img, [60, 20])
+        if k_health > -1:
+            screen.blit(health_img, [20, 20])
+        if 1 > k_health > -1:
+            screen.blit(nohealth_img, [60, 20])
+        if k_health < 0:
             bird.change_img(8, screen) # こうかとん悲しみエフェクト
             score.update(screen)
+            screen.blit(nohealth_img, [100, 20])
+            screen.blit(nohealth_img, [60, 20])
+            screen.blit(nohealth_img, [20, 20])
+            rc = pg.Surface((WIDTH, HEIGHT))
+            fonto = pg.font.Font(None, 80)
+            txt = fonto.render("Game Over", True, (255, 255, 255))
+            rc.set_alpha(50)
+            screen.blit(txt, [WIDTH/2-150, HEIGHT/2])
+            screen.blit(rc, [0, 0])
             pg.display.update()
-            time.sleep(2)
+            time.sleep(5)
+            
             return
+        for bomb in pg.sprite.spritecollide(bird, bombs, True):
+            k_health -= 1
 
         bird.update(key_lst, screen)
         beams.update()
@@ -470,8 +460,6 @@ def main():
         bombs.draw(screen)
         exps.update()
         exps.draw(screen)
-        gravity_fields.update()
-        gravity_fields.draw(screen)
         score.update(screen)
         Bmode.update(screen)
         condition_c.update(screen)

@@ -336,8 +336,8 @@ class SpreadBomb(Bomb):
         super().__init__(emy, bird)
         self.vx = math.cos(angle)
         self.vy = math.sin(angle)
-        self.rect.centerx = emy.rect.centerx
-        self.rect.centery = emy.rect.centery
+        self.rect.centerx = emy.rect.centerx - 200
+        self.rect.centery = emy.rect.centery 
         self.speed = 6
 
     def update(self):
@@ -376,7 +376,7 @@ def main():
                 beams.add(Beam(bird))
 
         x = tmr%4800
-        if score.value <= 50:
+        if score.value < 50:
             screen.blit(bg_img, [-x, 0])
             screen.blit(bg_img2,[-x+1600, 0])
             screen.blit(bg_img, [-x+3200, 0])

@@ -266,7 +266,7 @@ class Score:
     def __init__(self):
         self.font = pg.font.Font(None, 50)
         self.color = (0, 0, 255)
-        self.value = 40
+        self.value = 0
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         self.rect = self.image.get_rect()
         self.rect.center = 100, HEIGHT-50
@@ -403,6 +403,7 @@ def main():
                 ct_charge += 1
 
         x = tmr%4800         
+        
         if score.value < 50:  # スコアが50以下の時、
             pg.mixer.music.load(f"fig/全てを創造する者「Dominus_Deus」.mp3")  # BGMの音源をロード
             pg.mixer.music.play(-1)  # BGMを再生（無限ループ）

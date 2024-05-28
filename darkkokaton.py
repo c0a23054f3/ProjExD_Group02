@@ -312,7 +312,7 @@ def main():
             rc = pg.Surface((WIDTH, HEIGHT))
             fonto = pg.font.Font(None, 80)
             txt = fonto.render("Game Over", True, (255, 255, 255))
-            rc.set_alpha(200)
+            rc.set_alpha(50)
             screen.blit(txt, [WIDTH/2-150, HEIGHT/2])
             screen.blit(rc, [0, 0])
             pg.display.update()

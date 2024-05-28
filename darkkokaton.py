@@ -4,6 +4,7 @@ import random
 import sys
 import time
 import pygame as pg
+from pygame.sprite import Group
 
 
 WIDTH, HEIGHT = 1600, 900  # ゲームウィンドウの幅，高さ
@@ -52,20 +53,22 @@ class Bird(pg.sprite.Sprite):
         img0 = pg.transform.rotozoom(pg.image.load(f"fig/{num}.png"), 0, 2.0)
         img = pg.transform.flip(img0, True, False)  # デフォルトのこうかとん
         self.imgs = {
-            (+1, 0): img,
-            (+1, -1): img, 
-            (0, -1): img, 
-            (-1, -1): img,
-            (-1, 0): img,  
-            (-1, +1): img, 
-            (0, +1): img,
-            (+1, +1): img, 
+            (+1, 0): img,  # 右
+            (+1, -1): img,  # 右上
+            (0, -1): img,  # 上
+            (-1, -1): img,  # 左上
+            (-1, 0): img,  # 左
+            (-1, +1):img,  # 左下
+            (0, +1): img,  # 下
+            (+1, +1): img,  # 右下
         }
         self.dire = (+1, 0)
         self.image = self.imgs[self.dire]
         self.rect = self.image.get_rect()
         self.rect.center = xy
         self.speed = 10
+        self.state = "normal"
+        self.hyper_life = 0
         self.health = 2
 
 
@@ -98,6 +101,8 @@ class Bird(pg.sprite.Sprite):
         if not (sum_mv[0] == 0 and sum_mv[1] == 0):
             self.dire = tuple(sum_mv)
             self.image = self.imgs[self.dire]
+
+
         screen.blit(self.image, self.rect)
 
 
@@ -146,7 +151,7 @@ class Beam0(pg.sprite.Sprite):
         引数 bird：ビームを放つこうかとん
         """
         super().__init__()
-        self.vx, self.vy = (+1, 0)
+        self.vx, self.vy = (1,0)
         angle = math.degrees(math.atan2(-self.vy, self.vx))
         self.image = pg.transform.rotozoom(pg.image.load(f"fig/beam.png"), angle, 2.0)
         self.vx = math.cos(math.radians(angle))
@@ -261,7 +266,7 @@ class Score:
     def __init__(self):
         self.font = pg.font.Font(None, 50)
         self.color = (0, 0, 255)
-        self.value = 0
+        self.value = 40
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         self.rect = self.image.get_rect()
         self.rect.center = 100, HEIGHT-50
@@ -328,6 +333,21 @@ class Condition:
         screen.blit(self.txt, self.rect)
 
 
+class Boss(pg.sprite.Sprite):
+    """
+    ボスを出現させるクラス
+    """
+    def __init__(self):
+        super().__init__()
+        img10 = pg.transform.rotozoom(pg.image.load("fig/10.png"), 0, 15.0)
+        self.image = img10
+        self.rect = self.image.get_rect()
+        self.rect.center = (1400,450)
+        self.health = 10
+    def update(self, screen: pg.Surface):
+        screen.blit(self.image, self.rect)
+
+
 def main():
     pg.display.set_caption("真！こうかとん無双")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
@@ -336,14 +356,14 @@ def main():
     bg_img3 = pg.image.load(f"fig/temple-3d1.jpg")
     bg_img4 = bg_img3
     score = Score()
-
     bird = Bird(3, (900, 400))
     bombs = pg.sprite.Group()
     beams = pg.sprite.Group()
     beams_c = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
-
+    boss = Boss()
+    gravity_fields = pg.sprite.Group()
     shield = pg.sprite.Group()
 
     beam_mode = 0  # ショットの種類に関する変数
@@ -353,7 +373,7 @@ def main():
     tmr = 0
     ct_charge = 0  # チャージビームの時間計測
     clock = pg.time.Clock()
-
+    b_health = boss.health
     while True:
         key_lst = pg.key.get_pressed()
         for event in pg.event.get():
@@ -378,20 +398,12 @@ def main():
                         ct_charge = 0
                         condition_c = Condition()
 
-
         if beam_mode == 1:
             if beam_mode <= 160:
                 ct_charge += 1
 
-        x = tmr%4800
-        screen.blit(bg_img, [-x, 0])
-        screen.blit(bg_img,[-x+1600, 0])
-        screen.blit(bg_img, [-x+3200, 0])
-        screen.blit(bg_img, [-x+4800, 0])
-        tmr += 10
-        clock.tick(200)
-
-        if score.value <= 50:  # スコアが50以下の時、
+        x = tmr%4800         
+        if score.value < 50:  # スコアが50以下の時、
             pg.mixer.music.load(f"fig/全てを創造する者「Dominus_Deus」.mp3")  # BGMの音源をロード
             pg.mixer.music.play(-1)  # BGMを再生（無限ループ）
             pg.mixer.music.pause()  # このBGMはボスステージに流すので、ここでは一時停止
@@ -412,6 +424,30 @@ def main():
             clock.tick(100)
             tmr += 10
             clock.tick(200)
+            boss.update(screen)
+            #ビームとボスの当たり判定
+            for beam in pg.sprite.spritecollide(boss,beams,True):
+                b_health -= 1
+                exps.add(Explosion(beam,50))
+                if b_health < 0:
+                    # テキストの設定
+                    fonto =  pg.font.Font(None, 80)
+                    txt = fonto.render("Game Clear", True, (255, 255, 255))
+                    # 黒い四角の設定
+                    rct = pg.Surface((WIDTH, HEIGHT))
+                    pg.draw.rect(rct, (0, 0, 0), (0, 0, 1600, 900))
+                    rct.set_alpha(150)
+                    #　こうかとんの読み込み
+                    kk_img2 = pg.transform.rotozoom(pg.image.load("fig/7.png"), 0, 2.0)
+                    kk_img3 = pg.transform.rotozoom(pg.image.load("fig/7.png"), 0, 2.0)
+                    #　ゲームクリア画面の表示
+                    screen.blit(rct, [0, 0])
+                    screen.blit(txt, [640, 410])
+                    screen.blit(kk_img2, [1000, 350])
+                    screen.blit(kk_img3, [500, 350])
+                    pg.display.update()
+                    time.sleep(5)
+                    return
 
         for emy in emys:
             if emy.state == "stop" and tmr%emy.interval == 0:

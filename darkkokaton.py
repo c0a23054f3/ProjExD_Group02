@@ -342,18 +342,19 @@ class Condition:
         self.mode = mode
         if mode == 1:
             self.font = pg.font.Font(None, 40)
-            self.color = (251, 224, 0)
+            self.color = (255, 0, 0)
             self.value = 0
-            self.txt = self.font.render("Chrge OK!", 0, self.color)
+            self.txt = self.font.render("Charge OK!", 0, self.color)
             self.rect = self.txt.get_rect()
             self.rect.center = WIDTH-150, HEIGHT-60
 
         else:
-            self.font = pg.font.Font(None, 45)
-            self.color = (251, 224, 0)
-            self.txt = self.font.render("Chrge OK!", 0, self.color)
+            self.font = pg.font.Font(None, 40)
+            self.color = (255, 0, 0)
+            self.value = 0
+            self.txt = self.font.render("Charge yet...", 0, self.color)
             self.rect = self.txt.get_rect()
-            self.rect.center = -100, -100
+            self.rect.center = WIDTH-150, HEIGHT-60
 
     def update(self, screen:pg.Surface):
         screen.blit(self.txt, self.rect)
@@ -369,7 +370,7 @@ class Boss(pg.sprite.Sprite):
         self.image = img10
         self.rect = self.image.get_rect()
         self.rect.center = (1400,450)
-        self.health = 10
+        self.health = 100
         self.attack_interval = 100 #攻撃の間隔
         self.last_attack_time = 0
         self.change_pattern_interval = 750  # パターン変更の間隔
@@ -438,10 +439,10 @@ def main():
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
     boss = Boss()
-    gravity_fields = pg.sprite.Group()
     shield = pg.sprite.Group()
 
     beam_mode = 0  # ショットの種類に関する変数
+    charge_mode = 0  # チャージの状態を表す変数
     k_health = bird.health  #birdクラスの中のhealthを呼び出す
     health_img = pg.transform.rotozoom(pg.image.load(f"fig/health.png"), 0, 0.1)
     nohealth_img = pg.transform.rotozoom(pg.image.load(f"fig/nohealth.png"), 0, 0.385)
@@ -461,16 +462,18 @@ def main():
 
             if beam_mode == 0:
                 Bmode = Mode(beam_mode)
-                condition_c = Condition()
+                condition_c = Condition(charge_mode)
                 if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                     beams.add(Beam0(bird))
             elif beam_mode == 1:
                 Bmode = Mode(beam_mode)
                 if ct_charge >= 150:
-                    condition_c = Condition(beam_mode)
+                    charge_mode = 1
+                    condition_c = Condition(charge_mode)
                     if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                         beams_c.add(Beam1(bird))
                         ct_charge = 0
+                        charge_mode = 0
                         condition_c = Condition()
 
         if beam_mode == 1:
@@ -507,25 +510,30 @@ def main():
             for beam in pg.sprite.spritecollide(boss,beams,True):
                 b_health -= 1
                 exps.add(Explosion(beam,50))
-                if b_health < 0:
-                    # テキストの設定
-                    fonto =  pg.font.Font(None, 80)
-                    txt = fonto.render("Game Clear", True, (255, 255, 255))
-                    # 黒い四角の設定
-                    rct = pg.Surface((WIDTH, HEIGHT))
-                    pg.draw.rect(rct, (0, 0, 0), (0, 0, 1600, 900))
-                    rct.set_alpha(150)
-                    #　こうかとんの読み込み
-                    kk_img2 = pg.transform.rotozoom(pg.image.load("fig/7.png"), 0, 2.0)
-                    kk_img3 = pg.transform.rotozoom(pg.image.load("fig/7.png"), 0, 2.0)
-                    #　ゲームクリア画面の表示
-                    screen.blit(rct, [0, 0])
-                    screen.blit(txt, [640, 410])
-                    screen.blit(kk_img2, [1000, 350])
-                    screen.blit(kk_img3, [500, 350])
-                    pg.display.update()
-                    time.sleep(5)
-                    return
+            for beam in pg.sprite.spritecollide(boss, beams_c, True):
+                b_health -= 8
+                exps.add(Explosion(beam, 50))
+            pg.draw.rect(screen, (0, 255, 0), (1000, 50, 500, 30))
+            pg.draw.rect(screen, (255, 0, 0), (1000, 50, 5*(100-b_health), 30))
+            if b_health < 0:
+                # テキストの設定
+                fonto =  pg.font.Font(None, 80)
+                txt = fonto.render("Game Clear", True, (255, 255, 255))
+                # 黒い四角の設定
+                rct = pg.Surface((WIDTH, HEIGHT))
+                pg.draw.rect(rct, (0, 0, 0), (0, 0, 1600, 900))
+                rct.set_alpha(150)
+                #　こうかとんの読み込み
+                kk_img2 = pg.transform.rotozoom(pg.image.load("fig/7.png"), 0, 2.0)
+                kk_img3 = pg.transform.rotozoom(pg.image.load("fig/7.png"), 0, 2.0)
+                #　ゲームクリア画面の表示
+                screen.blit(rct, [0, 0])
+                screen.blit(txt, [640, 410])
+                screen.blit(kk_img2, [1000, 350])
+                screen.blit(kk_img3, [500, 350])
+                pg.display.update()
+                time.sleep(5)
+                return
 
         for emy in emys:
             if emy.state == "stop" and tmr%emy.interval == 0:
@@ -581,7 +589,6 @@ def main():
             screen.blit(rc, [0, 0])
             pg.display.update()
             time.sleep(5)
-            
             return
         for bomb in pg.sprite.spritecollide(bird, bombs, True):
             k_health -= 1
@@ -601,8 +608,6 @@ def main():
         score.update(screen)
         Bmode.update(screen)
         condition_c.update(screen)
-        shield.update()
-        shield.draw(screen)
         pg.display.update()
         tmr += 1
         clock.tick(50)
